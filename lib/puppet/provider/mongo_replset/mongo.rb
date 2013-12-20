@@ -30,6 +30,7 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
 
   def exists?
     begin
+      #FIXME: should raise an error if the replicaset name doesn't match
       is_replicaset? and is_configured?
     rescue Puppet::ExecutionFailure
       debug "Does't exist"
