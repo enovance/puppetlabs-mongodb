@@ -54,9 +54,14 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     command_str = command.respond_to?(:join) ? command.join(' ') : command
     output = _mongo(command_str)
 
-    if output =~ /Error: couldn't connect to server/
-      sleep 30
+    # Allow waiting up to 30 seconds for mongod to become ready
+    # Wait for 2 seconds initially, double time at each iteration
+    wait = 2
+    while output =~ /Error: couldn't connect to server/ and wait <= 16
+      info("Waiting #{wait} seconds for mongod to become available")
+      sleep wait
       output = _mongo(command_str)
+      wait *= 2
     end
 
     unless $CHILD_STATUS == 0
