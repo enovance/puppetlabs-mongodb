@@ -66,7 +66,6 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     end
 
     unless $CHILD_STATUS == 0
-      debug("Ohohohoho============\n===============================\n===============")
       raise Puppet::ExecutionFailure, output
     end
 
