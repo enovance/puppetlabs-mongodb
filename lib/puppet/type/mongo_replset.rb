@@ -17,7 +17,7 @@
 Puppet::Type.newtype(:mongo_replset) do
   @doc = "Manage a MongoDB replicaSet"
 
-  newproperty(:ensure, :parent => Puppet::Property::ensure) do
+  ensurable do
     defaultto :present
 
     newvalue(:present) do
