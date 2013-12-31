@@ -21,7 +21,11 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
   # commands :mongo => 'mongo'
 
   def create
-    output = mongo('rs.initiate()')
+    hostsconf = @resource[:members].collect.with_index do |host, id|
+      "{ _id: #{id}, host: \"#{host}\" }"
+    end.join(',')
+    conf = "{ _id: \"#{@resource[:name]}\", members: [ #{hostsconf} ] }"
+    output = mongo("rs.initiate(#{conf})")
     output['ok'] == 1
   end
 
@@ -37,6 +41,20 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
       false
     end
   end
+
+  def members
+    mongo('db.isMaster()')['hosts']
+  end
+
+  def members=(hosts)
+    current = mongo('db.isMaster()')['hosts']
+    newhosts = hosts - current
+    newhosts.each do |host|
+      mongo("rs.add(\"#{host}\")")
+    end
+  end
+
+
 
   private
 
@@ -69,7 +87,9 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
       raise Puppet::ExecutionFailure, output
     end
 
-    output.gsub!(/ISODate\((.+?)\)/, '\1')
+    # Dirty hack to remove JavaScript objects
+    output.gsub!(/ISODate\((.+?)\)/, '\1 ')
+    output.gsub!(/Timestamp\((.+?)\)/, '[\1]')
     JSON.parse(output)
   end
 
