@@ -25,42 +25,68 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
       "{ _id: #{id}, host: \"#{host}\" }"
     end.join(',')
     conf = "{ _id: \"#{@resource[:name]}\", members: [ #{hostsconf} ] }"
-    output = mongo("rs.initiate(#{conf})")
-    output['ok'] == 1
+    output = mongo("rs.initiate(#{conf})", @resource[:members][0])
+    if output['ok'] == 0
+      raise Puppet::Error, "rs.initiate() failed for replicaset #{@resource[:name]}: #{output['errmsg']}"
+    end
   end
 
   def destroy
   end
 
   def exists?
-    begin
-      #FIXME: should raise an error if the replicaset name doesn't match
-      is_replicaset? and is_configured?
-    rescue Puppet::ExecutionFailure
-      debug "Does't exist"
-      false
+    failcount = 0
+    is_configured = false
+    @resource[:members].each do |host|
+      begin
+        debug "Checking replicaset member #{host} ..."
+        status = mongo('rs.status()', host)
+        if status.has_key?('errmsg') and status['errmsg'] == 'not running with --replSet'
+            raise Puppet::Error, "Can't configure replicaset #{@resource[:name]}, host #{host} is not supposed to be part of a replicaset."
+        end
+        if status.has_key?('set')
+          if status['set'] != @resource[:name]
+            raise Puppet::Error, "Can't configure replicaset #{@resource[:name]}, host #{host} is already part of another replicaset."
+          end
+          is_configured = true
+        end
+      rescue Puppet::ExecutionFailure
+        debug "Can't connect to replicaset member #{host}."
+        failcount += 1
+      end
     end
+
+    if failcount == @resource[:members].length
+      raise Puppet::Error, "Can't connect to any member of replicaset #{@resource[:name]}."
+    end
+    return is_configured
   end
 
   def members
-    mongo('db.isMaster()')['hosts']
-  end
-
-  def members=(hosts)
-    current = mongo('db.isMaster()')['hosts']
-    newhosts = hosts - current
-    newhosts.each do |host|
-      mongo("rs.add(\"#{host}\")")
+    if master = master_host()
+      mongo('db.isMaster()', master)['hosts']
+    else
+      raise Puppet::Error, "Can't find master host for replicaset #{@resource[:name]}."
     end
   end
 
-
+  def members=(hosts)
+    if master = master_host()
+      current = mongo('db.isMaster()', master)['hosts']
+      newhosts = hosts - current
+      newhosts.each do |host|
+        mongo("rs.add(\"#{host}\")", master)
+    end
+    else
+      raise Puppet::Error, "Can't find master host for replicaset #{@resource[:name]}."
+    end
+  end
 
   private
 
-  def _mongo(command_str)
+  def _mongo(command_str, host)
     debug("Running mongo command: #{command_str}")
-    open('| mongo --quiet 2>&1', 'w+') do |pipe|
+    open("| mongo #{host} --quiet 2>&1", 'w+') do |pipe|
       pipe.write(command_str)
       pipe.close_write
       out = pipe.read
@@ -69,9 +95,9 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     end
   end
 
-  def mongo(command)
+  def mongo(command, host)
     command_str = command.respond_to?(:join) ? command.join(' ') : command
-    output = _mongo(command_str)
+    output = _mongo(command_str, host)
 
     # Allow waiting up to 30 seconds for mongod to become ready
     # Wait for 2 seconds initially, double time at each iteration
@@ -79,7 +105,7 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     while output =~ /Error: couldn't connect to server/ and wait <= 16
       info("Waiting #{wait} seconds for mongod to become available")
       sleep wait
-      output = _mongo(command_str)
+      output = _mongo(command_str, host)
       wait *= 2
     end
 
@@ -93,21 +119,14 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     JSON.parse(output)
   end
 
-  def is_replicaset?
-    status = mongo('db.isMaster()')
-    status.has_key?('isreplicaset') or status.has_key?('setName')
-  end
-
-  def is_master?(set_name)
-    status = mongo('db.isMaster()')
-    status.has_key?('setName') and
-      status['setName'] == set_name and
-      status['ismaster']
-  end
-
-  def is_configured?
-    status = mongo('db.isMaster()')
-    status.has_key?('setName')
+  def master_host
+    @resource[:members].each do |host|
+      status = mongo('db.isMaster()', host)
+      if status.has_key?('primary')
+        return status['primary']
+      end
+    end
+    false
   end
 
 end
