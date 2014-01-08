@@ -18,7 +18,9 @@ require 'json'
 
 Puppet::Type.type(:mongo_replset).provide(:mongo) do
 
-  # commands :mongo => 'mongo'
+  desc "Manage hosts members for a replicaset."
+
+  #commands :mongo => 'mongo'
 
   def create
     hostsconf = @resource[:members].collect.with_index do |host, id|
