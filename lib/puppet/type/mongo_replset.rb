@@ -33,8 +33,6 @@ Puppet::Type.newtype(:mongo_replset) do
     desc "The replicaSet members"
 
     def insync?(is)
-      puts is.class
-      puts should.class
       is.sort == should.sort
     end
   end
