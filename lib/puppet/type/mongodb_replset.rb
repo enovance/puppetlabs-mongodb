@@ -1,4 +1,4 @@
-# Copyright (C) 2013 eNovance SAS <licensing@enovance.com>
+# Copyright (C) 2014 eNovance SAS <licensing@enovance.com>
 #
 # Author: François Charlier <francois.charlier@enovance.com>
 #
@@ -14,7 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-Puppet::Type.newtype(:mongo_replset) do
+Puppet::Type.newtype(:mongodb_replset) do
   @doc = "Manage a MongoDB replicaSet"
 
   ensurable do

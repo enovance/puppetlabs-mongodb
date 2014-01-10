@@ -16,11 +16,11 @@
 # under the License.
 
 require 'puppet'
-require 'puppet/type/mongo_replset'
-describe Puppet::Type.type(:mongo_replset) do
+require 'puppet/type/mongodb_replset'
+describe Puppet::Type.type(:mongodb_replset) do
 
   before :each do
-    @replset = Puppet::Type.type(:mongo_replset).new(:name => 'test')
+    @replset = Puppet::Type.type(:mongodb_replset).new(:name => 'test')
   end
 
   it 'should accept a replica set name' do
@@ -34,7 +34,7 @@ describe Puppet::Type.type(:mongo_replset) do
 
   it 'should require a name' do
     expect {
-      Puppet::Type.type(:mongo_replset).new({})
+      Puppet::Type.type(:mongodb_replset).new({})
     }.to raise_error(Puppet::Error, 'Title or name must be provided')
   end
 

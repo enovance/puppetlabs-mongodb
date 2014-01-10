@@ -18,7 +18,7 @@
 
 require 'spec_helper'
 
-describe Puppet::Type.type(:mongo_replset).provider(:mongo) do
+describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
 
   valid_conf = "{ _id: \"rs_test\", members: [ { _id: 0, host: \"mongo1:27017\" }, { _id: 1, host: \"mongo2:27017\" }, { _id: 2, host: \"mongo3:27017\" } ] }"
 
@@ -34,7 +34,7 @@ describe Puppet::Type.type(:mongo_replset).provider(:mongo) do
     "localTime"           => "2014-01-10T15:57:48.642Z",
     "ok"                  => 1 }
 
-  let(:resource) { Puppet::Type.type(:mongo_replset).new(
+  let(:resource) { Puppet::Type.type(:mongodb_replset).new(
     { :ensure        => :present,
       :name          => 'rs_test',
       :members       => valid_members,

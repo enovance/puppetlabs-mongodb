@@ -16,7 +16,7 @@
 
 require 'json'
 
-Puppet::Type.type(:mongo_replset).provide(:mongo) do
+Puppet::Type.type(:mongodb_replset).provide(:mongo) do
 
   desc "Manage hosts members for a replicaset."
 

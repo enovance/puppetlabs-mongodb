@@ -10,7 +10,7 @@ node default {
 }
 
 node /mongo1/ inherits default {
-  mongo_replset{'rsmain':
+  mongodb_replset{'rsmain':
     members => ['mongo1:27017', 'mongo2:27017', 'mongo3:27017']
   }
 }
