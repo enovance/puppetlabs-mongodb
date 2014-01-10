@@ -44,14 +44,14 @@ describe Puppet::Type.type(:mongo_replset).provider(:mongo) do
   end
 
   describe 'members' do
-    it 'returns master host for the replicaset' do
+    it 'returns the current members for the replicaset' do
       provider.expects(:mongo)
       provider.members.should be_true
     end
   end
 
   describe 'members=' do
-    it 'changes the master host of the replicaset' do
+    it 'adds missing members to the replicaset' do
       provider.members=("mongo2:27017")
     end
   end
