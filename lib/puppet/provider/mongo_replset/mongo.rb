@@ -27,7 +27,7 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
       "{ _id: #{id}, host: \"#{host}\" }"
     end.join(',')
     conf = "{ _id: \"#{@resource[:name]}\", members: [ #{hostsconf} ] }"
-    output = mongo("rs.initiate(#{conf})", @resource[:members][0])
+    output = self.rs_initiate(conf, @resource[:members][0])
     if output['ok'] == 0
       raise Puppet::Error, "rs.initiate() failed for replicaset #{@resource[:name]}: #{output['errmsg']}"
     end
@@ -42,7 +42,7 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     @resource[:members].each do |host|
       begin
         debug "Checking replicaset member #{host} ..."
-        status = mongo('rs.status()', host)
+        status = self.rs_status(host)
         if status.has_key?('errmsg') and status['errmsg'] == 'not running with --replSet'
             raise Puppet::Error, "Can't configure replicaset #{@resource[:name]}, host #{host} is not supposed to be part of a replicaset."
         end
@@ -65,8 +65,8 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
   end
 
   def members
-    if master = master_host()
-      mongo('db.isMaster()', master)['hosts']
+    if master = self.master_host()
+      self.db_ismaster(master)['hosts']
     else
       raise Puppet::Error, "Can't find master host for replicaset #{@resource[:name]}."
     end
@@ -74,11 +74,12 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
 
   def members=(hosts)
     if master = master_host()
-      current = mongo('db.isMaster()', master)['hosts']
+      current = self.db_ismaster(master)['hosts']
       newhosts = hosts - current
       newhosts.each do |host|
-        mongo("rs.add(\"#{host}\")", master)
-    end
+        #TODO: check output (['ok'] == 0 should be sufficient)
+        self.rs_add(host, master)
+      end
     else
       raise Puppet::Error, "Can't find master host for replicaset #{@resource[:name]}."
     end
@@ -99,7 +100,7 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
 
   def mongo(command, host)
     command_str = command.respond_to?(:join) ? command.join(' ') : command
-    output = _mongo(command_str, host)
+    output = self._mongo(command_str, host)
 
     # Allow waiting up to 30 seconds for mongod to become ready
     # Wait for 2 seconds initially, double time at each iteration
@@ -107,7 +108,7 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     while output =~ /Error: couldn't connect to server/ and wait <= 16
       info("Waiting #{wait} seconds for mongod to become available")
       sleep wait
-      output = _mongo(command_str, host)
+      output = self._mongo(command_str, host)
       wait *= 2
     end
 
@@ -123,12 +124,28 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
 
   def master_host
     @resource[:members].each do |host|
-      status = mongo('db.isMaster()', host)
+      status = self.db_ismaster(host)
       if status.has_key?('primary')
         return status['primary']
       end
     end
     false
+  end
+
+  def db_ismaster(host)
+    self.mongo('db.isMaster()', host)
+  end
+
+  def rs_initiate(conf, host)
+    return self.mongo("rs.initiate(#{conf})", @resource[:members][0])
+  end
+
+  def rs_status(host)
+    self.mongo('rs.status()', host)
+  end
+
+  def rs_add(host, master)
+    self.mongo("rs.add(\"#{host}\")", master)
   end
 
 end
