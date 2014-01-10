@@ -20,7 +20,7 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
 
   desc "Manage hosts members for a replicaset."
 
-  #commands :mongo => 'mongo'
+  commands :mongo => 'mongo'
 
   def create
     hostsconf = @resource[:members].collect.with_index do |host, id|
@@ -85,35 +85,24 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     end
   end
 
-  private
-
-  def _mongo(command_str, host)
-    debug("Running mongo command: #{command_str}")
-    open("| mongo #{host} --quiet 2>&1", 'w+') do |pipe|
-      pipe.write(command_str)
-      pipe.close_write
-      out = pipe.read
-      debug("Mongo command: #{command_str} output:\n#{out}")
-      out
     end
   end
 
-  def mongo(command, host)
-    command_str = command.respond_to?(:join) ? command.join(' ') : command
-    output = self._mongo(command_str, host)
-
+  def mongo_command(command, host, max_wait=16)
     # Allow waiting up to 30 seconds for mongod to become ready
     # Wait for 2 seconds initially, double time at each iteration
-    wait = 2
-    while output =~ /Error: couldn't connect to server/ and wait <= 16
-      info("Waiting #{wait} seconds for mongod to become available")
-      sleep wait
-      output = self._mongo(command_str, host)
-      wait *= 2
-    end
-
-    unless $CHILD_STATUS == 0
-      raise Puppet::ExecutionFailure, output
+    wait = 1
+    begin
+      output = self.mongo('--quiet', '--host', host, '--eval', "printjson(#{command})")
+    rescue Puppet::ExecutionFailure => e
+      if e =~ /Error: couldn't connect to server/ and wait <= max_wait
+        info("Waiting #{wait} seconds for mongod to become available")
+        sleep wait
+        wait *= 2
+        retry
+      else
+        raise
+      end
     end
 
     # Dirty hack to remove JavaScript objects
@@ -133,19 +122,20 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
   end
 
   def db_ismaster(host)
-    self.mongo('db.isMaster()', host)
+    self.mongo_command("db.isMaster()", host)
   end
 
   def rs_initiate(conf, host)
-    return self.mongo("rs.initiate(#{conf})", @resource[:members][0])
+    return self.mongo_command("rs.initiate(#{conf})", @resource[:members][0])
+
   end
 
   def rs_status(host)
-    self.mongo('rs.status()', host)
+    self.mongo_command("rs.status()", host)
   end
 
   def rs_add(host, master)
-    self.mongo("rs.add(\"#{host}\")", master)
+    self.mongo_command("rs.add(\"#{host}\")", master)
   end
 
 end
