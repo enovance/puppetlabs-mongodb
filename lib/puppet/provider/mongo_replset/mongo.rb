@@ -23,11 +23,12 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
   commands :mongo => 'mongo'
 
   def create
-    hostsconf = @resource[:members].collect.with_index do |host, id|
+    alive_members = members_present
+    hostsconf = alive_members.collect.with_index do |host, id|
       "{ _id: #{id}, host: \"#{host}\" }"
     end.join(',')
     conf = "{ _id: \"#{@resource[:name]}\", members: [ #{hostsconf} ] }"
-    output = self.rs_initiate(conf, @resource[:members][0])
+    output = self.rs_initiate(conf, alive_members[0])
     if output['ok'] == 0
       raise Puppet::Error, "rs.initiate() failed for replicaset #{@resource[:name]}: #{output['errmsg']}"
     end
@@ -85,6 +86,14 @@ Puppet::Type.type(:mongo_replset).provide(:mongo) do
     end
   end
 
+  def members_present
+    @resource[:members].select do |host|
+      begin
+        self.mongo('--host', host, '--quiet', '--eval', 'db.version()')
+        true
+      rescue Puppet::ExecutionFailure
+        false
+      end
     end
   end
 
