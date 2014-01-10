@@ -423,10 +423,14 @@ mongodb_replicaset { rsmain:
 }
 ```
 
+Ideally the ```mongodb_replicaset``` resource will be declared on the initial
+desired primary node (arbitrarily the first of the list) and this node will be
+processed once the secondary nodes are up. This will ensure all the nodes are
+in the first configuration of the replicaset, else it will require running
+puppet again to add them.
+
 #####`members`
-Array of 'host:port' for the replicaset members. Available members will be
-added at replicaset initialization, other members will be added to the
-configuration afterwards.
+Array of 'host:port' of the replicaset members.
 
 It currently only adds members without options.
 
