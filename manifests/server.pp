@@ -49,6 +49,7 @@ class mongodb::server (
   $mms_name        = undef,
   $mms_interval    = undef,
   $replset         = undef,
+  $shardsvr        = undef,
   $rest            = undef,
   $quiet           = undef,
   $slowms          = undef,

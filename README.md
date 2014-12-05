@@ -332,6 +332,9 @@ MMS interval for mms monitoring. Default: None
 Use this setting to configure replication with replica sets. Specify a replica
 set name as an argument to this set. All hosts must have the same set name.
 
+#####`shardsvr`
+Use this setting to enable Sharding (set to true). Default: None
+
 #####`rest`
 Set to true to enable a simple REST interface. Default: false
 
@@ -463,6 +466,19 @@ puppet again to add them.
 Array of 'host:port' of the replicaset members.
 
 It currently only adds members without options.
+
+#### Provider: mongodb_shard
+'mongodb_shard' can be used to create and manage MongoDB shards.
+
+```puppet
+mongodb_shard { rsmain:
+  members => ['host1:27017', 'host2:27017', 'host3:27017']
+}
+```
+#####`members`
+Array of 'host:port' of the sharding members.
+
+It currently only adds hosts without options.
 
 ## Limitations
 
